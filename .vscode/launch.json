@@ -7,7 +7,7 @@
             "request": "launch",
             "program": "C:\\Users\\vanes\\Uni\\COMP 424\\Project\\COMP424-Fall2024\\simulator.py",  // Make sure to update the path if necessary
             "console": "integratedTerminal",
-            "args": ["--player_1", "student_agent", "--player_2", "random_agent", "--board_size", "6", "--display", "--autoplay_runs", "5"]
+            "args": ["--player_1", "student_agent", "--player_2", "random_agent", "--board_size", "12", "--autoplay_runs", "5"]
         }
     ]
 }

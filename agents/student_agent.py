@@ -18,7 +18,7 @@ class StudentAgent(Agent):
     super(StudentAgent, self).__init__()
     self.name = "StudentAgent"
 
-  def find_depth(size, num_moves):
+  '''def find_depth(size, num_moves):
     max_values = [9, 5, 4, 4]
     max_val = 3
     if size == 6:
@@ -117,9 +117,9 @@ class StudentAgent(Agent):
             else:
                 return 3
     else:
-        raise ValueError("Unsupported board size")
+        raise ValueError("Unsupported board size")'''
 
-
+  
   def step(self, chess_board, player, opponent):
     """
     Implement the step function of your agent here.
@@ -143,42 +143,48 @@ class StudentAgent(Agent):
     # num_moves = len(get_valid_moves(chess_board, player))
     #depth = StudentAgent.find_depth(len(chess_board[0]), num_moves)
     #depth = StudentAgent.determine_optimal_depth(chess_board, player)
+    StudentAgent.TIME_ENDED = -1
+    num_pieces = np.count_nonzero(chess_board)
+    num_moves = len(get_valid_moves(chess_board, player))
     start_time = time.time()
-    val, move = StudentAgent.alpha_beta_move(chess_board, player, opponent, player, float('-inf'), float('inf'), start_time)
-    time_taken = time.time() - start_time
+    val, move, visited, time_ended = StudentAgent.alpha_beta_move(chess_board, player, opponent, player, float('-inf'), float('inf'), start_time, 0,-1)
+    end_time = time.time()
+    time_taken = end_time - start_time
 
-    '''if time_taken > 2:
-      print("depth: " +str(depth)+", num moves: "+str(num_moves))'''
+    
+
+    if time_taken > 2:
+      print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
 
 
-    print("My AI's turn took ", time_taken, "seconds.")
+    #print("My AI's turn took ", time_taken, "seconds.")
     return move
     # Dummy return (you should replace this with your actual logic)
     # Returning a random valid move as an example
     #return random_move(chess_board,player)
   
   POSITIONAL_WEIGHTS_6x6 = [
-    [100, -20, -10, -10, -20, 100],
+    [50, -20, -10, -10, -20, 50],
     [-20, -50, -2,  -2, -50, -20],
     [-10, -2,   5,   5,  -2, -10],
     [-10, -2,   5,   5,  -2, -10],
     [-20, -50, -2,  -2, -50, -20],
-    [100, -20, -10, -10, -20, 100]
+    [50, -20, -10, -10, -20, 50]
 ]
 
   POSITIONAL_WEIGHTS_8x8 = [
-    [100, -20, 10,  5,  5, 10, -20, 100],
+    [50, -20, 10,  5,  5, 10, -20, 50],
     [-20, -50, -2, -2, -2, -2, -50, -20],
     [ 10,  -2,  5,  1,  1,  5,  -2,  10],
     [  5,  -2,  1,  1,  1,  1,  -2,   5],
     [  5,  -2,  1,  1,  1,  1,  -2,   5],
     [ 10,  -2,  5,  1,  1,  5,  -2,  10],
     [-20, -50, -2, -2, -2, -2, -50, -20],
-    [100, -20, 10,  5,  5, 10, -20, 100]
+    [50, -20, 10,  5,  5, 10, -20, 50]
   ]
 
   POSITIONAL_WEIGHTS_10x10 = [
-    [100, -20, -10,  5,   5,  5,   5, -10, -20, 100],
+    [50, -20, -10,  5,   5,  5,   5, -10, -20, 50],
     [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -50, -20],
     [-10,  -2,  5,   1,   1,  1,   1,   5,  -2, -10],
     [  5,  -2,  1,   1,   1,  1,   1,   1,  -2,   5],
@@ -187,10 +193,10 @@ class StudentAgent(Agent):
     [  5,  -2,  1,   1,   1,  1,   1,   1,  -2,   5],
     [-10,  -2,  5,   1,   1,  1,   1,   5,  -2, -10],
     [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -50, -20],
-    [100, -20, -10,  5,   5,  5,   5, -10, -20, 100]
+    [50, -20, -10,  5,   5,  5,   5, -10, -20, 50]
 ]
   POSITIONAL_WEIGHTS_12x12 = [
-    [100, -20, -10,  5,   5,  5,   5,   5,  5, -10, -20, 100],
+    [50, -20, -10,  5,   5,  5,   5,   5,  5, -10, -20, 50],
     [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -2,  -2, -50, -20],
     [-10,  -2,  5,   1,   1,  1,   1,   1,  1,   1,  -2, -10],
     [  5,  -2,  1,   1,   1,  1,   1,   1,  1,   1,  -2,   5],
@@ -201,9 +207,9 @@ class StudentAgent(Agent):
     [-10,  -2,  5,   1,   1,  1,   1,   1,  1,   1,  -2, -10],
     [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -2,  -2, -50, -20],
     [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -2,  -2, -50, -20],
-    [100, -20, -10,  5,   5,  5,   5,   5,  5, -10, -20, 100]
+    [50, -20, -10,  5,   5,  5,   5,   5,  5, -10, -20, 50]
 ]
-
+  
 
   def eval_board(board, player_color, opponent_color):
     
@@ -236,26 +242,44 @@ class StudentAgent(Agent):
             position_val += POSITIONAL_WEIGHTS[row][column]
 
     num_moves_left = len(get_valid_moves(board, player_color))
+    num_moves_opponent = len(get_valid_moves(board, opponent_color))
 
-    result = disc_difference + position_val*2 + num_moves_left*2
+    result = disc_difference + position_val*2 + num_moves_left*2 - num_moves_opponent
     return result
 
-  def alpha_beta_move(board, player_color, opponent_color, maximize_player_color,  alpha, beta, start_time):
-    if time.time() - start_time >=2:
-      return StudentAgent.eval_board(board, player_color, opponent_color), None
+  def alpha_beta_move(board, player_color, opponent_color, maximize_player_color,  alpha, beta, start_time, num_vodes_visited, time_ended):
+    end = time.time()
+    if end - start_time >= 1.99:# or num_vodes_visited >= 11000:
+      if time_ended == -1:
+         time_ended = end
+         
+      return StudentAgent.eval_board(board, player_color, opponent_color), None, num_vodes_visited, time_ended
     valid_moves = get_valid_moves(board, player_color)
     if len(valid_moves) == 0:
-      return StudentAgent.eval_board(board, player_color, opponent_color), None
+      
+      return StudentAgent.eval_board(board, player_color, opponent_color), None, num_vodes_visited, time_ended
     
     #need to implement minimax
+    
     if maximize_player_color == player_color:
+      '''if time.time() - start_time >=1.85:
+         return StudentAgent.eval_board(board, player_color, opponent_color), None'''
       max_val = float('-inf')
       final_move = None
+      
       for move in valid_moves:
+        
         temp_board = board.copy()
         #need to check if execute move actually changes the board
         execute_move(temp_board, move, player_color)
-        val, _ = StudentAgent.alpha_beta_move(temp_board, opponent_color, player_color, maximize_player_color,  alpha, beta)
+        num_vodes_visited+= 1
+        val, _,  new_num_nodes, new_time= StudentAgent.alpha_beta_move(temp_board, opponent_color, player_color, maximize_player_color,  alpha, beta, start_time, num_vodes_visited, time_ended)
+        if time_ended == -1 and new_time != -1:
+           time_ended = new_time
+
+        num_vodes_visited = new_num_nodes
+        
+        
         if val > max_val:
           max_val = val
           final_move = move
@@ -265,15 +289,27 @@ class StudentAgent(Agent):
         alpha = max(alpha, val)
         if alpha >= beta:
           break
-      return max_val, final_move
+        end = time.time()
+        if end - start_time >= 1.99:# or num_vodes_visited >= 11000:
+           break
+      
+      return max_val, final_move, num_vodes_visited, time_ended
     else:#minimize turn
+      '''if time.time() - start_time >=1.90:
+         return StudentAgent.eval_board(board, player_color, opponent_color), None'''
       min_val = float('inf')
       final_move = None
       for move in valid_moves:
+        
         temp_board = board.copy()
         #need to check if execute move actually changes the board
         execute_move(temp_board, move, player_color)
-        val, _ = StudentAgent.alpha_beta_move(temp_board, opponent_color, player_color, maximize_player_color,  alpha, beta)
+        num_vodes_visited+= 1
+        val, _, new_num_nodes, new_time = StudentAgent.alpha_beta_move(temp_board, opponent_color, player_color, maximize_player_color,  alpha, beta, start_time, num_vodes_visited, time_ended)
+        num_vodes_visited = new_num_nodes
+        if time_ended == -1 and new_time != -1:
+           time_ended = new_time
+        
         if val < min_val:
           min_val = val
           final_move = move
@@ -283,7 +319,15 @@ class StudentAgent(Agent):
         beta = min(beta, val)
         if alpha >= beta:
           break
-      return min_val, final_move
+        end = time.time()
+        if end - start_time >= 1.99:# or num_vodes_visited >= 11000:
+           break
+      
+      return min_val, final_move, num_vodes_visited, time_ended
   
 
 #result agaisnt greedy is alwasy the same since no random factor
+
+
+
+
