@@ -50,7 +50,7 @@ class StudentAgent(Agent):
     # val, move, visited, time_ended = StudentAgent.alpha_beta_move(chess_board, player, opponent, player, float('-inf'), float('inf'), start_time, 0,-1)
     # end_time = time.time()
     # time_taken = end_time - start_time
-    # StudentAgent.record_to_csv("data_records.cvs",time_taken,player,opponent,move,val)
+    
     
     # New code
     start_time = time.time()
@@ -167,19 +167,7 @@ class StudentAgent(Agent):
     
     # Remove duplicates and return as a list
     return list(set(result)) 
-    
-  def record_to_csv(file_name, *args):
-    """
-    Appends input data to a CSV file without importing any libraries.
 
-    Parameters:
-    - file_name: The name of the CSV file (str).
-    - *args: Values to write as a row in the CSV file.
-    """
-    row = ','.join(map(str, args)) + '\n'
-
-    with open(file_name, mode='a', encoding='utf-8') as file:
-        file.write(row)
   
   def eval_board(board, player_color, opponent_color):
     """Call this function at leaves of the alpha beta tree to 
@@ -278,8 +266,6 @@ class StudentAgent(Agent):
     
     result = (disc_difference*w_disc_difference) + (position_val*w_postition_cal) + (num_valid_moves_player*w_num_valid_moves_player) - (num_valid_moves_opponent*w_num_valid_moves_opponent)
     
-    # Record the weights we tried to see which gives the better result
-    # StudentAgent.record_to_csv("weight_tunning.csv", w_disc_difference,w_postition_cal,w_num_moves_left,w_num_moves_opponent,result)
     
     return result
 
