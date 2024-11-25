@@ -44,13 +44,29 @@ class StudentAgent(Agent):
     StudentAgent.TIME_ENDED = -1
     num_pieces = np.count_nonzero(chess_board)
     num_moves = len(get_valid_moves(chess_board, player))
+    
+    # old code
+    # start_time = time.time()
+    # val, move, visited, time_ended = StudentAgent.alpha_beta_move(chess_board, player, opponent, player, float('-inf'), float('inf'), start_time, 0,-1)
+    # end_time = time.time()
+    # time_taken = end_time - start_time
+    # StudentAgent.record_to_csv("data_records.cvs",time_taken,player,opponent,move,val)
+    
+    # New code
     start_time = time.time()
-    val, move, visited, time_ended = StudentAgent.alpha_beta_move(chess_board, player, opponent, player, float('-inf'), float('inf'), start_time, 0,-1)
+    val, move, _, _ = StudentAgent.alpha_beta_move(
+        chess_board, 
+        player, 
+        opponent, 
+        player, 
+        float('-inf'), 
+        float('inf'), 
+        start_time, 
+        0,
+        -1
+    )
     end_time = time.time()
-    time_taken = end_time - start_time
-
-    StudentAgent.record_to_csv("data_records.cvs",time_taken,player,opponent,move,val)
-
+    time_taken=end_time-start_time
     if time_taken > 2:
       print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
 
@@ -60,7 +76,11 @@ class StudentAgent(Agent):
     # Dummy return (you should replace this with your actual logic)
     # Returning a random valid move as an example
     #return random_move(chess_board,player)
+    
+    
+    
   def find_good_edges( matrix, num):
+    
     n = len(matrix)  
     result = []  
 
@@ -180,6 +200,44 @@ class StudentAgent(Agent):
     # - substract weight of pieces that are easy to flip -> In Progress
     # - add weight for pieces connected to corner -> Done!
     
+    # Get piece counts
+    count_player = np.count_nonzero(board == player_color)
+    count_opponent = np.count_nonzero(board == opponent_color)
+    
+    # Get board size and weights
+    size = len(board)
+    weights = {
+        6: StudentAgent.POSITIONAL_WEIGHTS_6x6,
+        8: StudentAgent.POSITIONAL_WEIGHTS_8x8,
+        10: StudentAgent.POSITIONAL_WEIGHTS_10x10,
+        12: StudentAgent.POSITIONAL_WEIGHTS_12x12
+    }[size]
+    
+    # Calculate position value using numpy operations
+    player_positions = board == player_color
+    opponent_positions = board == opponent_color
+    position_val = np.sum(np.multiply(weights, player_positions)) - np.sum(np.multiply(weights, opponent_positions))
+    
+    # Adjust weights based on game phase
+    total_pieces = count_player + count_opponent
+    mid_game = total_pieces > (size * size // 3)
+    end_game = total_pieces > (size * size * 2 // 3)
+    
+    # Dynamic weight adjustments
+    w_disc = 1 if mid_game else 2 if end_game else 0.5
+    w_pos = 2 if mid_game else 1 if end_game else 3
+    w_mobility = 2 if mid_game else 3 if end_game else 1
+    
+    # Mobility (valid moves) calculation
+    mobility_player = len(get_valid_moves(board, player_color))
+    mobility_opponent = len(get_valid_moves(board, opponent_color))
+    
+    return (
+        w_disc * (count_player - count_opponent) +
+        w_pos * position_val +
+        w_mobility * (mobility_player - mobility_opponent)
+    )
+    
     count_player = np.count_nonzero(board == player_color)
     count_opponent = np.count_nonzero(board == opponent_color)
     disc_difference = count_player - count_opponent
@@ -201,7 +259,8 @@ class StudentAgent(Agent):
     
     for row in range(row_length):
       for column in range(row_length):
-        if (row,column) in good_edges.append(bad_edges):
+        good_edges.append(bad_edges)
+        if (row,column) in good_edges:
           POSITIONAL_WEIGHTS[row][column]=30
         if board[row][column] == player_color:
           position_val += POSITIONAL_WEIGHTS[row][column]
@@ -210,17 +269,17 @@ class StudentAgent(Agent):
             
     w_disc_difference=1       
     w_postition_cal=2
-    w_num_moves_left=2
-    w_num_moves_opponent=1
+    w_num_valid_moves_player=2
+    w_num_valid_moves_opponent=1
     
-    num_moves_left = len(get_valid_moves(board, player_color))
-    num_moves_opponent = len(get_valid_moves(board, opponent_color))
+    num_valid_moves_player = len(get_valid_moves(board, player_color))
+    num_valid_moves_opponent = len(get_valid_moves(board, opponent_color))
     
     
-    result = (disc_difference*w_disc_difference) + (position_val*w_postition_cal) + (num_moves_left*w_num_moves_left) - (num_moves_opponent*w_num_moves_opponent)
+    result = (disc_difference*w_disc_difference) + (position_val*w_postition_cal) + (num_valid_moves_player*w_num_valid_moves_player) - (num_valid_moves_opponent*w_num_valid_moves_opponent)
     
     # Record the weights we tried to see which gives the better result
-    StudentAgent.record_to_csv("weight_tunning.csv", w_disc_difference,w_postition_cal,w_num_moves_left,w_num_moves_opponent,result)
+    # StudentAgent.record_to_csv("weight_tunning.csv", w_disc_difference,w_postition_cal,w_num_moves_left,w_num_moves_opponent,result)
     
     return result
 
@@ -244,7 +303,7 @@ class StudentAgent(Agent):
     
     end = time.time()
     
-    if end - start_time >= 1.99:# or num_vodes_visited >= 11000:
+    if end - start_time >= 1.98:# or num_vodes_visited >= 11000:
       if time_ended == -1:
           time_ended = end
           
@@ -287,7 +346,7 @@ class StudentAgent(Agent):
         if alpha >= beta:
           break
         
-        if time.time() - start_time >= 1.99:# or num_vodes_visited >= 11000:
+        if time.time() - start_time >= 1.98:# or num_vodes_visited >= 11000:
             break
       
       return max_val, final_move, num_vodes_visited, time_ended
@@ -324,7 +383,7 @@ class StudentAgent(Agent):
         if alpha >= beta:
           break
         
-        if time.time() - start_time >= 1.99:# or num_vodes_visited >= 11000:
+        if time.time() - start_time >= 1.98:# or num_vodes_visited >= 11000:
             break
       
       return min_val, final_move, num_vodes_visited, time_ended
