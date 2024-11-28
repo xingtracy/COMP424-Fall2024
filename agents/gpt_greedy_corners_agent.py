@@ -17,7 +17,7 @@ import copy
 import random
 
 @register_agent("gpt_greedy_corners_agent")
-class StudentAgent(Agent):
+class GPTAgent(Agent):
     """
     A custom agent for playing Reversi/Othello.
     """

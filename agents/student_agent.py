@@ -1,12 +1,27 @@
 # Student agent: Add your own agent here
+import os
+import sys
+
+# Add the parent directory to Python path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+parent_dir = os.path.dirname(current_dir)
+sys.path.append(parent_dir)
+
 from agents.agent import Agent
 from store import register_agent
-import sys
 import numpy as np
 from copy import deepcopy
 import time
 from helpers import random_move, count_capture, execute_move, check_endgame, get_valid_moves
 import subprocess
+
+# from agents.agent import Agent
+# from store import register_agent
+# import sys
+# import numpy as np
+# from copy import deepcopy
+# import time
+# from helpers import random_move, count_capture, execute_move, check_endgame, get_valid_moves
 
 @register_agent("student_agent")
 class StudentAgent(Agent):
@@ -16,28 +31,30 @@ class StudentAgent(Agent):
   """
   
   def __init__(self):
+    
     super(StudentAgent, self).__init__()
+    
     self.name = "StudentAgent"
+    
     # Weights for board position evaluation
     self.position_weights = None
+    
     # Adjustable based on board size
     self.max_depth = 3
+    
+    # Weight parametters with default values
+    self.corner_weight = 10
+    self.mobility_weight = 5
+    self.score_weight = 1
+    self.edge_weight = 7
   
   def step(self, chess_board, player, opponent):
     """
     Implement the step function of your agent here.
-    You can use the following variables to access the chess board:
-    - chess_board: a numpy array of shape (board_size, board_size)
-      where 0 represents an empty spot, 1 represents Player 1's discs (Blue),
-      and 2 represents Player 2's discs (Brown).
-    - player: 1 if this agent is playing as Player 1 (Blue), or 2 if playing as Player 2 (Brown).
-    - opponent: 1 if the opponent is Player 1 (Blue), or 2 if the opponent is Player 2 (Brown).
 
     You should return a tuple (r,c), where (r,c) is the position where your agent
     wants to place the next disc. Use functions in helpers to determine valid moves
     and more helpful tools.
-
-    Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
     """
     start_time = time.time()
     board_size = chess_board.shape[0]
@@ -90,32 +107,8 @@ class StudentAgent(Agent):
     time_taken = time.time() - start_time
     if time_taken > 2:
       print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
-    # print(f"Move took {time_taken:.3f} seconds")
     
     return best_move
-
-  # def initialize_weights(self, board_size):
-  #   """Initialize position weights for the given board size"""
-  #   weights = np.ones((board_size, board_size))
-    
-  #   # Corners are very valuable: weight of 5
-  #   weights[0, 0] = weights[0, board_size-1] = 10
-  #   weights[board_size-1, 0] = weights[board_size-1, board_size-1] = 10
-    
-  #   # # Positions adjacent to corners are dangerous: weight of -2
-  #   # weights[0, 1] = weights[1, 0] = weights[1, 1] = -2
-  #   # weights[0, board_size-2] = weights[1, board_size-2] = weights[1, board_size-1] = -2
-  #   # weights[board_size-2, 0] = weights[board_size-2, 1] = weights[board_size-1, 1] = -2
-  #   # weights[board_size-2, board_size-1] = weights[board_size-2, board_size-2] = weights[board_size-1, board_size-2] = -2
-    
-  #   # # The rest of the edges are good: weight of 2
-  #   # weights[0, 2:board_size-2] = 2
-  #   # weights[board_size-1, 2:board_size-2] = 2
-  #   # weights[2:board_size-2, 0] = 2
-  #   # weights[2:board_size-2, board_size-1] = 2
-    
-    
-  # return weights
 
   def find_good_edges( matrix, num):
     
@@ -130,18 +123,16 @@ class StudentAgent(Agent):
       
       #top left
       if x == 0 and y == 0 :  
-          # Top left to top right 
-          for col in range(n):
-              if matrix[x][col] == num:
-                  coords.append((x, col))
-              else:
-                  break 
-          # Top left to bottom left
-          for row in range(n):
-              if matrix[row][y] == num:
-                  coords.append((row, y))
-              else:
-                  break
+        for col in range(n):
+          if matrix[x][col] == num:
+            coords.append((x, col))
+          else:
+            break 
+        for row in range(n):
+          if matrix[row][y] == num:
+            coords.append((row, y))
+          else:
+            break
       # Bottom left
       if x == (n - 1) and y == 0:  
         # Bottom left to bottom right
@@ -187,6 +178,7 @@ class StudentAgent(Agent):
           else:
             break
       unique_coords=list(set(coords))
+      
       return unique_coords
     
     # Iterate through each corner
@@ -200,35 +192,16 @@ class StudentAgent(Agent):
     # Remove duplicates and return as a list
     return list(set(result)) 
 
-  def evaluate_board(self, chess_board, player, opponent):
+  def evaluate_board(self, chess_board, player, opponent, c,m,s,e):
     """Evaluate board state"""
-    # if self.position_weights is None:
-    #     self.position_weights = self.initialize_weights(chess_board.shape[0])
-    
-    # player_edges = StudentAgent.find_good_edges(chess_board,player)
-    # opponent_edges = StudentAgent.find_good_edges(chess_board,opponent)
-    
-    # weight_edges_p = sum(1 for x, y in player_edges if chess_board[x, y] == player)
-    # weight_edges_o = sum(1 for x, y in opponent_edges if chess_board[x, y] == opponent)
-    
-    # # Count pieces with position weights
-    # player_score = np.sum(np.where(chess_board == player, self.position_weights, 0))
-    # opponent_score = np.sum(np.where(chess_board == opponent, self.position_weights, 0))
-    
-    # # Count mobility (number of valid moves)
-    # player_mobility = len(get_valid_moves(chess_board, player))
-    # opponent_mobility = len(get_valid_moves(chess_board, opponent))
-    
-    # # Combine factors
-    # return (player_score - opponent_score) + 5 * (player_mobility - opponent_mobility) + 5 * (weight_edges_p-weight_edges_o)
-    
+
     player_edges = StudentAgent.find_good_edges(chess_board,player)
     opponent_edges = StudentAgent.find_good_edges(chess_board,opponent)
     
     player_edges = sum(1 for x, y in player_edges if chess_board[x, y] == player)
     opponent_edges = sum(1 for x, y in opponent_edges if chess_board[x, y] == opponent)
     
-     # Count total pieces
+    # Count total pieces
     player_score = np.sum(chess_board == player)
     opponent_score = np.sum(chess_board == opponent)
 
@@ -247,10 +220,10 @@ class StudentAgent(Agent):
 
     # Weighted evaluation
     score = (
-      c * (player_corners - opponent_corners) + 
-      m * (player_moves - opponent_moves) +      
-      s * (player_score - opponent_score) +          
-      e * (player_edges - opponent_edges)
+      self.corner_weight * (player_corners - opponent_corners) + 
+      self.mobility_weight * (player_moves - opponent_moves) +      
+      self.score_weight * (player_score - opponent_score) +          
+      self.edge_weight * (player_edges - opponent_edges)
     )
      
     return score
@@ -308,25 +281,71 @@ class StudentAgent(Agent):
         break
             
     return best_value, best_move
-
   
+  
+def testing():
+    # Print current working directory for debugging
+    print("Current working directory:", os.getcwd())
+    
+    # Verify simulator.py exists
+    if not os.path.exists("simulator.py"):
+        print("Error: simulator.py not found!")
+        return
+        
+    CORNER_WEIGHTS = [10, 8, 5]
+    MOBILITY_WEIGHTS = [5, 3, 2]
+    SCORE_WEIGHTS = [3, 2, 1]
+    EDGES_WEIGHTS = [10, 8, 5]
+    
+    autoplay_num = 20
+    board_size = 10
+    
+    for c in CORNER_WEIGHTS:
+        for m in MOBILITY_WEIGHTS:
+            for s in SCORE_WEIGHTS:
+                for e in EDGES_WEIGHTS:
+                    # Create an instance of StudentAgent and set its weights
+                    agent = StudentAgent()
+                    agent.corner_weight = c
+                    agent.mobility_weight = m
+                    agent.score_weight = s
+                    agent.edge_weight = e
+                    
+                    print(f"\nTesting weights:")
+                    print(f"Corner weight: {c}")
+                    print(f"Mobility weight: {m}")
+                    print(f"Score weight: {s}")
+                    print(f"Edges weight: {e}")
 
-CORNER_WEIGHTS=[10,8,5]
-EDGES_WEIGHTS=[10,8,5]
-MOBILITY_WEIGHTS=[5,3,2]
-SCORE_WEIGHTS=[3,2,1]
+                    # Get the full path to simulator.py
+                    simulator_path = os.path.join(os.getcwd(), "simulator.py")
+                    
+                    # Split the command into a list of arguments
+                    command = [
+                        sys.executable,  # Use the current Python interpreter
+                        simulator_path,
+                        "--player_1", "student_agent",
+                        "--player_2", "richard",
+                        "--autoplay",
+                        "--autoplay_runs", str(autoplay_num),
+                        "--board_size", str(board_size)
+                    ]
+                    
+                    try:
+                        result = subprocess.run(
+                            command,
+                            capture_output=True,
+                            text=True,
+                            check=True
+                        )
+                        print("Output:", result.stdout)
+                        if result.stderr:
+                            print("Errors:", result.stderr)
+                    except subprocess.CalledProcessError as e:
+                        print("Error running simulator:", e)
+                        print("Output:", e.output)
+                        print("Stderr:", e.stderr)
 
-autoplay_num=20
-board_size=10
-
-for c in CORNER_WEIGHTS:
-  for e in EDGES_WEIGHTS:
-    for m in MOBILITY_WEIGHTS:
-      for s in SCORE_WEIGHTS:
-        print("Corner weight of "+c)
-        print("Edges weight of "+e)
-        print("Mobility weight of "+m)
-        print("Corner weight of "+s)
-        command = "python3 simulator.py --player_1 student_agent --player_2 richard --autoplay --autoplay_runs "+ autoplay_num+" --board_size "+board_size
-        result = subprocess.run(command, capture_output=True, text=True)
-        print(result)
+if __name__ == "__main__":
+  sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+  testing()

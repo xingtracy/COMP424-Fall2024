@@ -1,4 +1,5 @@
 import numpy as np
+
 from agents.agent import Agent
 from helpers import random_move
 from store import register_agent
