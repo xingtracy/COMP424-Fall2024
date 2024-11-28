@@ -6,6 +6,7 @@ import numpy as np
 from copy import deepcopy
 import time
 from helpers import random_move, count_capture, execute_move, check_endgame, get_valid_moves
+import subprocess
 
 @register_agent("student_agent")
 class StudentAgent(Agent):
@@ -114,7 +115,7 @@ class StudentAgent(Agent):
   #   # weights[2:board_size-2, board_size-1] = 2
     
     
-  #   return weights
+  # return weights
 
   def find_good_edges( matrix, num):
     
@@ -246,12 +247,12 @@ class StudentAgent(Agent):
 
     # Weighted evaluation
     score = (
-      10 * (player_corners - opponent_corners) + 
-      5 * (player_moves - opponent_moves) +      
-      (player_score - opponent_score) +          
-      7 * (player_edges - opponent_edges)
+      c * (player_corners - opponent_corners) + 
+      m * (player_moves - opponent_moves) +      
+      s * (player_score - opponent_score) +          
+      e * (player_edges - opponent_edges)
     )
-    
+     
     return score
 
   def alpha_beta(self, chess_board, depth, alpha, beta, maximizing_player, player, opponent, start_time):
@@ -310,3 +311,22 @@ class StudentAgent(Agent):
 
   
 
+CORNER_WEIGHTS=[10,8,5]
+EDGES_WEIGHTS=[10,8,5]
+MOBILITY_WEIGHTS=[5,3,2]
+SCORE_WEIGHTS=[3,2,1]
+
+autoplay_num=20
+board_size=10
+
+for c in CORNER_WEIGHTS:
+  for e in EDGES_WEIGHTS:
+    for m in MOBILITY_WEIGHTS:
+      for s in SCORE_WEIGHTS:
+        print("Corner weight of "+c)
+        print("Edges weight of "+e)
+        print("Mobility weight of "+m)
+        print("Corner weight of "+s)
+        command = "python3 simulator.py --player_1 student_agent --player_2 richard --autoplay --autoplay_runs "+ autoplay_num+" --board_size "+board_size
+        result = subprocess.run(command, capture_output=True, text=True)
+        print(result)
