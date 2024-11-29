@@ -13,516 +13,371 @@ class StudentAgent(Agent):
   A class for your implementation. Feel free to use this class to
   add any helper functionalities needed for your agent.
   """
-
+  
   def __init__(self):
     super(StudentAgent, self).__init__()
     self.name = "StudentAgent"
-
+    self.position_weights = None
+    self.max_depth = 3
+    # Weights for different game phases
+    self.weights = {
+      'opening': {
+        'corner_grab': 100,
+        'stability': 50,
+        'mobility': 80,
+        'placement': 40,
+        'frontier': 30,
+        'disc_diff': 0,
+      },
+      'midgame': {
+        'corner_grab': 60,
+        'stability': 50,
+        'mobility': 40,
+        'placement': 30,
+        'frontier': 25,
+        'disc_diff': 30,
+      },
+      'endgame': {
+        'corner_grab': 30,
+        'stability': 50,
+        'mobility': 0,
+        'placement': 20,
+        'frontier': 15,
+        'disc_diff': 50,
+      }
+    }
+  
   def step(self, chess_board, player, opponent):
     """
     Implement the step function of your agent here.
-    You can use the following variables to access the chess board:
-    - chess_board: a numpy array of shape (board_size, board_size)
-      where 0 represents an empty spot, 1 represents Player 1's discs (Blue),
-      and 2 represents Player 2's discs (Brown).
-    - player: 1 if this agent is playing as Player 1 (Blue), or 2 if playing as Player 2 (Brown).
-    - opponent: 1 if the opponent is Player 1 (Blue), or 2 if the opponent is Player 2 (Brown).
-
-    You should return a tuple (r,c), where (r,c) is the position where your agent
-    wants to place the next disc. Use functions in helpers to determine valid moves
-    and more helpful tools.
-
-    Please check the sample implementation in agents/random_agent.py or agents/human_agent.py for more details.
     """
-
-    # Some simple code to help you with timing. Consider checking 
-    # time_taken during your search and breaking with the best answer
-    # so far when it nears 2 seconds.
-    # num_moves = len(get_valid_moves(chess_board, player))
-    #depth = StudentAgent.find_depth(len(chess_board[0]), num_moves)
-    #depth = StudentAgent.determine_optimal_depth(chess_board, player)
-    StudentAgent.TIME_ENDED = -1
-    num_pieces = np.count_nonzero(chess_board)
-    num_moves = len(get_valid_moves(chess_board, player))
-    
-    # old code
-    # start_time = time.time()
-    # val, move, visited, time_ended = StudentAgent.alpha_beta_move(chess_board, player, opponent, player, float('-inf'), float('inf'), start_time, 0,-1)
-    # end_time = time.time()
-    # time_taken = end_time - start_time
-    
-    
-    # New code
     start_time = time.time()
-    val, move, _, _ = StudentAgent.alpha_beta_move(
-        chess_board, 
-        player, 
-        opponent, 
-        player, 
-        float('-inf'), 
-        float('inf'), 
-        start_time, 
-        0,
-        -1
-    )
-    end_time = time.time()
-    time_taken=end_time-start_time
+    board_size = chess_board.shape[0]
+    empty_squares = np.sum(chess_board == 0)
+    total_squares = board_size * board_size
+    
+    # Max depth based on board size and game phase
+    if board_size == 6:
+      self.max_depth = 5
+    elif board_size == 8:
+      self.max_depth = 4
+    elif board_size == 10:
+      self.max_depth = 3
+    else:
+      self.max_depth = 2
+        
+    # Increase depth in endgame
+    if empty_squares < total_squares / 4:
+      self.max_depth += 1
+        
+    try:
+      _, best_move = self.alpha_beta(
+        chess_board,
+        self.max_depth,
+        float('-inf'),
+        float('inf'),
+        True,
+        player,
+        opponent,
+        start_time
+      )
+        
+    except TimeoutError:
+      # If we timeout, return the best move found so far
+      valid_moves = get_valid_moves(chess_board, player)
+      if valid_moves:
+        best_move = valid_moves[0]
+        # Quick evaluation of immediate moves
+        best_score = float('-inf')
+        for move in valid_moves:
+          board_copy = deepcopy(chess_board)
+          execute_move(board_copy, move, player)
+          score = self.evaluate_board(board_copy, player, opponent)
+          if score > best_score:
+            best_score = score
+            best_move = move
+      else:
+        best_move = None
+            
+    time_taken = time.time() - start_time
     if time_taken > 2:
       print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
-
-
-    #print("My AI's turn took ", time_taken, "seconds.")
-    return move
-    # Dummy return (you should replace this with your actual logic)
-    # Returning a random valid move as an example
-    #return random_move(chess_board,player)
     
-    
-    
-  def find_good_edges( matrix, num):
-    
-    n = len(matrix)  
-    result = []  
-
-    corners = [
-        (0, 0), 
-        (n - 1, 0),
-        (n - 1, n - 1),
-        (0, n - 1),
-    ]
-    
-    # Helper function to check edge connected to a corner
-    def check_edge(corner):
-      x, y = corner
-      coords = []
-      
-      #top left
-      if x == 0 and y == 0 :  
-          # Top left to top right 
-          for col in range(n):
-              if matrix[x][col] == num:
-                  coords.append((x, col))
-              else:
-                  break 
-          # Top left to bottom left
-          for row in range(n):
-              if matrix[row][y] == num:
-                  coords.append((row, y))
-              else:
-                  break
-      # Bottom left
-      if x == (n - 1) and y == 0:  
-          # Bottom left to bottom right
-          for col in range(n):
-              if matrix[x][col] == num:
-                  coords.append((x, col))
-              else:
-                  break
-          # Bottom left to Top left
-          for row in range(n):
-              if matrix[-(row+1)][y] == num:
-                  coords.append(((n-1)-row, y))
-              else:
-                  break
-              
-      # Bottom right
-      if x == (n - 1) and y == (n - 1):  
-          # Bottom right to bottom left
-          for col in range(n):
-              if matrix[x][-(1+col)] == num:
-                  coords.append((x, (n-1)-col))
-              else:
-                  break
-          # Bottom right to Top right
-          for row in range(n):
-              if matrix[-(row+1)][y] == num:
-                  coords.append(((n-1)-row, y))
-              else:
-                  break
-          
-      # Top right
-      if x == 0 and y == (n - 1):       
-          # Top right to bottom left
-          for row in range(n):
-              if matrix[row][y] == num:
-                  coords.append((row, y))
-              else:
-                  break
-          # Top right to Top left
-          for col in range(n):
-              if matrix[x][-(1+col)] == num:
-                  coords.append((x, (n-1)-col))
-              else:
-                  break
-      unique_coords=list(set(coords))
-      return unique_coords
-    
-    # Iterate through each corner
-    for corner in corners:
-        if matrix[corner[0]][corner[1]] == num:
-            result.extend(check_edge(corner))
-    
-    # Remove corners
-    result = [item for item in result if item not in corners]
-    
-    # Remove duplicates and return as a list
-    return list(set(result)) 
-
+    return best_move
   
-  def eval_board(board, player_color, opponent_color):
-    """Call this function at leaves of the alpha beta tree to 
-    evaluate "likelyhood" for our player to win
-
-    Args:
-        board (Array[Array[int]])
-        player_color (int): 1 for player 1 and 2 for player 2
-        opponent_color (int): 1 for player 1 and 2 for player 2
-
-    Returns:
-      int: How good of a position is our player to win based on the board
-    """
+  def evaluate_board(self, chess_board, player, opponent):
+    """Evaluate board state with multiple heuristics"""
+    board_size = chess_board.shape[0]
+    empty_squares = np.sum(chess_board == 0)
+    total_squares = board_size * board_size
     
-    # Factors that influence the evaluation:
+    # Determine game phase
+    if empty_squares > 0.7 * total_squares:
+        phase = 'opening'
+    elif empty_squares > 0.3 * total_squares:
+        phase = 'midgame'
+    else:
+        phase = 'endgame'
     
-    # - substract weight in opponent weights as well -> Done!
-    # - substract weight of pieces that are easy to flip -> In Progress
-    # - add weight for pieces connected to corner -> Done!
+    weights = self.weights[phase]
     
-    # Get piece counts
-    count_player = np.count_nonzero(board == player_color)
-    count_opponent = np.count_nonzero(board == opponent_color)
+    # 1. Corner Grab
+    corners = [(0, 0), (0, board_size-1), (board_size-1, 0), (board_size-1, board_size-1)]
+    valid_moves = get_valid_moves(chess_board, player)
+    corner_grab = sum(1 for move in valid_moves if move in corners)
     
-    # Get board size and weights
-    size = len(board)
-    weights = {
-        6: StudentAgent.POSITIONAL_WEIGHTS_6x6,
-        8: StudentAgent.POSITIONAL_WEIGHTS_8x8,
-        10: StudentAgent.POSITIONAL_WEIGHTS_10x10,
-        12: StudentAgent.POSITIONAL_WEIGHTS_12x12
-    }[size]
+    # 2. Stability
+    player_stable, player_stable_board = StudentAgent.count_stable_pieces(chess_board, player)
+    opponent_stable, opponent_stable_board = StudentAgent.count_stable_pieces(chess_board, opponent)
+    stability = player_stable - opponent_stable
     
-    # Calculate position value using numpy operations
-    player_positions = board == player_color
-    opponent_positions = board == opponent_color
-    position_val = np.sum(np.multiply(weights, player_positions)) - np.sum(np.multiply(weights, opponent_positions))
+    # 3. Mobility
+    player_moves = len(valid_moves)
+    opponent_moves = len(get_valid_moves(chess_board, opponent))
+    mobility = player_moves - opponent_moves
     
-    # Adjust weights based on game phase
-    total_pieces = count_player + count_opponent
-    mid_game = total_pieces > (size * size // 3)
-    end_game = total_pieces > (size * size * 2 // 3)
+    # 4. Placement - my version
+    # player_positions = StudentAgent.position_weights(chess_board, player_stable_board, player)
+    # opponent_positions = StudentAgent.position_weights(chess_board, opponent_stable_board, opponent)
+    # placement_score = player_positions - opponent_positions
     
-    # Dynamic weight adjustments
-    w_disc = 1 if mid_game else 2 if end_game else 0.5
-    w_pos = 2 if mid_game else 1 if end_game else 3
-    w_mobility = 2 if mid_game else 3 if end_game else 1
+    # 4. Placement (using position weights)
+    placement_score = 0
+    position_weights = self.get_position_weights(board_size)
+    for i in range(board_size):
+        for j in range(board_size):
+            if chess_board[i][j] == player:
+                placement_score += position_weights[i][j]
+            elif chess_board[i][j] == opponent:
+                placement_score -= position_weights[i][j]
     
-    # Mobility (valid moves) calculation
-    mobility_player = len(get_valid_moves(board, player_color))
-    mobility_opponent = len(get_valid_moves(board, opponent_color))
+    # 5. Frontier Discs
+    player_frontier = StudentAgent.count_frontier_discs(chess_board, player)
+    opponent_frontier = StudentAgent.count_frontier_discs(chess_board, opponent)
+    frontier = opponent_frontier - player_frontier  # Fewer frontier discs is better
     
-    return (
-        w_disc * (count_player - count_opponent) +
-        w_pos * position_val +
-        w_mobility * (mobility_player - mobility_opponent)
+    # 6. Disc Difference
+    player_discs = np.sum(chess_board == player)
+    opponent_discs = np.sum(chess_board == opponent)
+    disc_diff = player_discs - opponent_discs
+    
+    # Calculate weighted sum
+    score = (
+        weights['corner_grab'] * corner_grab +
+        weights['stability'] * stability +
+        weights['mobility'] * mobility +
+        weights['placement'] * placement_score +
+        weights['frontier'] * frontier +
+        weights['disc_diff'] * disc_diff
     )
     
-    count_player = np.count_nonzero(board == player_color)
-    count_opponent = np.count_nonzero(board == opponent_color)
-    disc_difference = count_player - count_opponent
-    
-    row_length = len(board[0])
-    POSITIONAL_WEIGHTS = []
-    if row_length == 6:
-      POSITIONAL_WEIGHTS = StudentAgent.POSITIONAL_WEIGHTS_6x6
-    elif row_length == 8:
-      POSITIONAL_WEIGHTS = StudentAgent.POSITIONAL_WEIGHTS_8x8
-    elif row_length == 10:
-      POSITIONAL_WEIGHTS = StudentAgent.POSITIONAL_WEIGHTS_10x10
-    elif row_length == 12:
-      POSITIONAL_WEIGHTS = StudentAgent.POSITIONAL_WEIGHTS_12x12
-    position_val = 0
-    
-    good_edges = StudentAgent.find_good_edges(board,player_color)
-    bad_edges = StudentAgent.find_good_edges(board,opponent_color)
-    
-    for row in range(row_length):
-      for column in range(row_length):
-        good_edges.append(bad_edges)
-        if (row,column) in good_edges:
-          POSITIONAL_WEIGHTS[row][column]=30
-        if board[row][column] == player_color:
-          position_val += POSITIONAL_WEIGHTS[row][column]
-        if board[row][column] == opponent_color:
-          position_val -= POSITIONAL_WEIGHTS[row][column]
-            
-    w_disc_difference=1       
-    w_postition_cal=2
-    w_num_valid_moves_player=2
-    w_num_valid_moves_opponent=1
-    
-    num_valid_moves_player = len(get_valid_moves(board, player_color))
-    num_valid_moves_opponent = len(get_valid_moves(board, opponent_color))
-    
-    
-    result = (disc_difference*w_disc_difference) + (position_val*w_postition_cal) + (num_valid_moves_player*w_num_valid_moves_player) - (num_valid_moves_opponent*w_num_valid_moves_opponent)
-    
-    
-    return result
+    return score
 
-  def alpha_beta_move(board, player_color, opponent_color, maximize_player_color, alpha, beta, start_time, num_vodes_visited, time_ended):
-    """
-      Based on the state, we want to find move to maximize the player to win under 1.95s
-
-    Args:
-        board (Array[Array[int]])
-        player_color (int): 1 for player 1 and 2 for player 2
-        opponent_color (int): 1 for player 1 and 2 for player 2
-        maximize_player_color (int): 1 for player 1 and 2 for player 2
-        alpha (float): 
-        beta (float): 
-        start_time (time):
-        num_vodes_visited (int):
-        time_ended (time):
-    Returns:
-        min_val, final_move, num_vodes_visited, time_ended: 
-    """
+  def alpha_beta(self, chess_board, depth, alpha, beta, maximizing_player, player, opponent, start_time):
+    """Minimax implementation with alpha-beta pruning and time checking"""
     
-    end = time.time()
+    # Time safety margin
+    if time.time() - start_time > 1.97:  
+      return self.evaluate_board(chess_board, player, opponent), None
+      # raise TimeoutError
     
-    if end - start_time >= 1.98:# or num_vodes_visited >= 11000:
-      if time_ended == -1:
-          time_ended = end
+    # Base Case: At the root
+    if depth == 0:
+      return self.evaluate_board(chess_board, player, opponent), None
+        
+    is_endgame, p1_score, p2_score = check_endgame(chess_board, player, opponent)
+    
+    if is_endgame:
+      return self.evaluate_board(chess_board, player, opponent), None
+    
+    current_player = player if maximizing_player else opponent
+    other_player = opponent if maximizing_player else player
+    valid_moves = get_valid_moves(chess_board, current_player)
+    
+    if not valid_moves:
+      # If no moves, pass turn
+      return self.alpha_beta(chess_board, depth-1, alpha, beta, not maximizing_player, player, opponent, start_time)[0], None
+    
+    # Initialize 
+    best_move = valid_moves[0]
+    best_value = float('-inf') if maximizing_player else float('inf')
+    
+    for move in valid_moves:
+      board_copy = deepcopy(chess_board)
+      execute_move(board_copy, move, current_player)
+      
+      value, _ = self.alpha_beta(board_copy, depth-1, alpha, beta, not maximizing_player, player, opponent, start_time)
+      
+      if maximizing_player:
+        if value > best_value:
+          best_value = value
+          best_move = move
+        alpha = max(alpha, best_value)
+      else:
+        if value < best_value:
+          best_value = value
+          best_move = move
+        beta = min(beta, best_value)
           
-      return StudentAgent.eval_board(board, player_color, opponent_color), None, num_vodes_visited, time_ended
-    
-    valid_moves = get_valid_moves(board, player_color)
-    
-    # No valid moves
-    if len(valid_moves) == 0:
-      return StudentAgent.eval_board(board, player_color, opponent_color), None, num_vodes_visited, time_ended
-    
-    # Maximize turn
-    if maximize_player_color == player_color:
-      # if time.time() - start_time >=1.85:
-      #   return StudentAgent.eval_board(board, player_color, opponent_color), None
-      
-      max_val = float('-inf')
-      final_move = None
-      
-      for move in valid_moves:
-        
-        temp_board = board.copy()
-        
-        # Check if execute move actually changes the board
-        execute_move(temp_board, move, player_color)
-        num_vodes_visited+= 1
-        val, _,  new_num_nodes, new_time= StudentAgent.alpha_beta_move(temp_board, opponent_color, player_color, maximize_player_color,  alpha, beta, start_time, num_vodes_visited, time_ended)
-        num_vodes_visited = new_num_nodes
-        
-        if time_ended == -1 and new_time != -1:
-          time_ended = new_time
-        
-        if val > max_val:
-          max_val = val
-          final_move = move
-        
-        #do far did minimax now implement alpha beta
-        #in max branch need to get max val
-        alpha = max(alpha, val)
-        if alpha >= beta:
-          break
-        
-        if time.time() - start_time >= 1.98:# or num_vodes_visited >= 11000:
-            break
-      
-      return max_val, final_move, num_vodes_visited, time_ended
-    
-    # Minimize turn
-    else:
-      
-      # if time.time() - start_time >=1.90:
-      #   return StudentAgent.eval_board(board, player_color, opponent_color), None
-      
-      min_val = float('inf')
-      final_move = None
-      
-      for move in valid_moves:
-        
-        temp_board = board.copy()
-        
-        # Check if execute move actually changes the board
-        execute_move(temp_board, move, player_color)
-        num_vodes_visited+= 1
-        val, _, new_num_nodes, new_time = StudentAgent.alpha_beta_move(temp_board, opponent_color, player_color, maximize_player_color,  alpha, beta, start_time, num_vodes_visited, time_ended)
-        num_vodes_visited = new_num_nodes
-        
-        if time_ended == -1 and new_time != -1:
-            time_ended = new_time
-        
-        if val < min_val:
-          min_val = val
-          final_move = move
-        
-        #do far did minimax now implement alpha beta
-        #in max branch need to get max val
-        beta = min(beta, val)
-        if alpha >= beta:
-          break
-        
-        if time.time() - start_time >= 1.98:# or num_vodes_visited >= 11000:
-            break
-      
-      return min_val, final_move, num_vodes_visited, time_ended
-    
+      if beta <= alpha:
+        break
+            
+    return best_value, best_move
   
-  POSITIONAL_WEIGHTS_6x6 = [
-    [50, -20, -10, -10, -20, 50],
-    [-20, -50, -2,  -2, -50, -20],
-    [-10, -2,   5,   5,  -2, -10],
-    [-10, -2,   5,   5,  -2, -10],
-    [-20, -50, -2,  -2, -50, -20],
-    [50, -20, -10, -10, -20, 50]
-  ]
-  POSITIONAL_WEIGHTS_8x8 = [
-    [50, -20, 10,  5,  5, 10, -20, 50],
-    [-20, -50, -2, -2, -2, -2, -50, -20],
-    [ 10,  -2,  5,  1,  1,  5,  -2,  10],
-    [  5,  -2,  1,  1,  1,  1,  -2,   5],
-    [  5,  -2,  1,  1,  1,  1,  -2,   5],
-    [ 10,  -2,  5,  1,  1,  5,  -2,  10],
-    [-20, -50, -2, -2, -2, -2, -50, -20],
-    [50, -20, 10,  5,  5, 10, -20, 50]
-  ]
-  POSITIONAL_WEIGHTS_10x10 = [
-    [50, -20, -10,  5,   5,  5,   5, -10, -20, 50],
-    [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -50, -20],
-    [-10,  -2,  5,   1,   1,  1,   1,   5,  -2, -10],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  -2,   5],
-    [-10,  -2,  5,   1,   1,  1,   1,   5,  -2, -10],
-    [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -50, -20],
-    [50, -20, -10,  5,   5,  5,   5, -10, -20, 50]
-  ]
-  POSITIONAL_WEIGHTS_12x12 = [
-    [50, -20, -10,  5,   5,  5,   5,   5,  5, -10, -20, 50],
-    [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -2,  -2, -50, -20],
-    [-10,  -2,  5,   1,   1,  1,   1,   1,  1,   1,  -2, -10],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  1,   1,  -2,   5],
-    [  5,  -2,  1,   1,   1,  1,   1,   1,  1,   1,  -2,   5],
-    [-10,  -2,  5,   1,   1,  1,   1,   1,  1,   1,  -2, -10],
-    [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -2,  -2, -50, -20],
-    [-20, -50, -2,  -2,  -2, -2,  -2,  -2, -2,  -2, -50, -20],
-    [50, -20, -10,  5,   5,  5,   5,   5,  5, -10, -20, 50]
-  ]
-
-
-
-
-  '''
-  def find_depth(size, num_moves):
-    max_values = [9, 5, 4, 4]
-    max_val = 3
-    if size == 6:
-      max_val = max_values[0]
-      if num_moves == 4:
-        max_val = 7
-      if num_moves >= 5:
-        max_val =6
-    elif size == 8:
-      max_val = max_values[1]
-      if num_moves >=11:
-        max_val -= 1
-
-    elif size == 10:
-      max_val = max_values[2]
-      if num_moves >= 15:
-        max_val -= 1
-
-    elif size == 12:
-      max_val = max_values[3]
-      if num_moves >= 13:
-        max_val -= 1
-
-    return max_val
+  def count_stable_pieces(board, player):
+    """
+    Count stable pieces for a specific player on a Reversi/Othello board (excluding corners).
+    """
+    n = len(board)
+    stable = np.zeros((n, n), dtype=bool)  # Track stable pieces
+    corners = {(0, 0), (0, n-1), (n-1, 0), (n-1, n-1)}
     
-  def determine_optimal_depth(board, player_color):
-    num_moves = len(get_valid_moves(board, player_color))
-    total_pieces = np.count_nonzero(board)
-    board_size = len(board)  # Determine the size of the board (6, 8, 10, or 12)
+    # Mark corners as stable
+    for x, y in corners:
+      if board[x][y] == player:
+        stable[x][y] = True
+    
+    # Keep scanning until no new stable pieces are found
+    changed = True
+    while changed:
+      changed = False
+      for i in range(n):
+        for j in range(n):
+          # Skip empty squares, opponent pieces, and already stable pieces
+          if board[i][j] != player or stable[i][j] or (i, j) in corners:
+            continue
+          
+          # Check if piece is stable
+          if StudentAgent.is_stable_piece(board, stable, i, j, player):
+            stable[i][j] = True
+            changed = True
+    
+    # Count stable pieces (excluding corners)
+    stable_count = sum(1 for i in range(n) for j in range(n) if stable[i][j] and (i, j) not in corners)
+    return stable_count, stable
 
-    if board_size == 6:
-        # Heuristic thresholds for 6x6 board
-        if total_pieces < 10:  # Early game
-            if num_moves < 5:
-                return 7
-            else:
-                return 6
-        elif total_pieces < 20:  # Mid game
-            if num_moves < 10:
-                return 6
-            else:
-                return 5
-        else:  # Late game
-            if num_moves < 5:
-                return 8
-            else:
-                return 6
-    elif board_size == 8:
-        # Heuristic thresholds for 8x8 board
-        if total_pieces < 20:  # Early game
-            if num_moves < 10:
-                return 6
-            else:
-                return 5
-        elif total_pieces < 40:  # Mid game
-            if num_moves < 15:
-                return 5
-            else:
-                return 4
-        else:  # Late game
-            if num_moves < 10:
-                return 6
-            else:
-                return 5
-    elif board_size == 10:
-        # Heuristic thresholds for 10x10 board
-        if total_pieces < 30:  # Early game
-            if num_moves < 15:
-                return 5
-            else:
-                return 4
-        elif total_pieces < 50:  # Mid game
-            if num_moves < 20:
-                return 4
-            else:
-                return 3
-        else:  # Late game
-            if num_moves < 15:
-                return 5
-            else:
-                return 4
-    elif board_size == 12:
-        # Heuristic thresholds for 12x12 board
-        if total_pieces < 40:  # Early game
-            if num_moves < 20:
-                return 4
-            else:
-                return 3
-        elif total_pieces < 60:  # Mid game
-            if num_moves < 25:
-                return 3
-            else:
-                return 2
-        else:  # Late game
-            if num_moves < 20:
-                return 4
-            else:
-                return 3
-    else:
-        raise ValueError("Unsupported board size")
-  '''
+  def is_stable_piece(board, stable, row, col, player):
+    """
+    Check if a piece is stable by verifying it's protected in all directions.
+    A piece is stable if it's connected to stable pieces or board edges
+    in all directions (horizontal, vertical, and both diagonals).
+    """
+    n = len(board)
+    
+    # Check all directions
+    directions = [
+      [(0, 1), (0, -1)],  
+      [(1, 0), (-1, 0)],  
+      [(1, 1), (-1, -1)], 
+      [(1, -1), (-1, 1)]  
+    ]
+    
+    # For each direction pair (e.g., left/right, up/down)
+    for dir_pair in directions:
+      protected = False
+      # Check if protected by edge or stable pieces in either direction
+      for dx, dy in dir_pair:
+        x, y = row, col
+        while True:
+          x += dx
+          y += dy
+          # If we hit the edge, this direction is protected
+          if x < 0 or x >= n or y < 0 or y >= n:
+            protected = True
+            break
+          # If we hit an empty space or opponent's piece before a stable piece,
+          # this direction is not protected
+          if board[x][y] != player:
+            break
+          # If we hit a stable piece of same color, this direction is protected
+          if stable[x][y]:
+            protected = True
+            break
+        if protected:
+          break 
+      # If neither direction is protected, piece is not stable
+      if not protected:
+        return False
+    return True
+  
+  def position_weights(board, stable_board, player):
+    board_size = len(board[0])
+    weights = 0
+    
+    # Corners are highest value
+    corners = [(0, 0), (0, board_size-1), (board_size-1, 0), (board_size-1, board_size-1)]
+    for x, y in corners:
+      # is players piece but not in the stable board
+      if stable_board[x][y]!=player and board[x][y]==player :
+        weights += 100
+        
+    # Spaces adjacent to corners are dangerous is not in stable board
+    for x, y in corners:
+      for dx, dy in [(0,1), (1,0), (1,1), (-1,0), (0,-1), (-1,-1), (1,-1), (-1,1)]:
+        new_x, new_y = x + dx, y + dy
+        if 0 <= new_x < board_size and 0 <= new_y < board_size:
+          if stable_board[new_x][new_y]!=player:
+            weights -= 25
+                
+    # Edges are valuable, not counting the ones in stable board
+    for i in range(2, board_size-2):
+      
+      if stable_board[0][i]!=player and board[0][i]==player:
+        weights += 5
+        
+      if stable_board[i][0]!=player and board[i][0]==player:
+        weights += 5
+        
+      if stable_board[board_size-1][i]!=player and board[board_size-1][i]==player:
+        weights += 5
+        
+      if stable_board[i][board_size-1]!=player and board[i][board_size-1]==player:
+        weights += 5
+    
+    return weights
+
+  def count_frontier_discs(board, player):
+  
+    """Count number of empty spaces adjacent to player's pieces"""
+    directions = [(0,1), (1,0), (0,-1), (-1,0), (1,1), (-1,-1), (1,-1), (-1,1)]
+    frontier = 0
+    board_size = board.shape[0]
+    
+    for i in range(board_size):
+      for j in range(board_size):
+        if board[i][j] == player:
+          for dx, dy in directions:
+            new_x, new_y = i + dx, j + dy
+            if (0 <= new_x < board_size and 
+              0 <= new_y < board_size and 
+              board[new_x][new_y] == 0):
+              frontier += 1
+              break
+            
+    return frontier
+  
+  def get_position_weights(self, board_size):
+    """Generate position weights for the board"""
+    if self.position_weights is not None and self.position_weights.shape[0] == board_size:
+        return self.position_weights
+        
+    weights = np.ones((board_size, board_size))
+    
+    # Corners are highest value
+    corners = [(0, 0), (0, board_size-1), (board_size-1, 0), (board_size-1, board_size-1)]
+    for x, y in corners:
+        weights[x][y] = 100
+        
+    # Spaces adjacent to corners are dangerous
+    for x, y in corners:
+        for dx, dy in [(0,1), (1,0), (1,1), (-1,0), (0,-1), (-1,-1), (1,-1), (-1,1)]:
+            new_x, new_y = x + dx, y + dy
+            if 0 <= new_x < board_size and 0 <= new_y < board_size:
+                weights[new_x][new_y] = -25
+                
+    # Edges are valuable
+    for i in range(2, board_size-2):
+        weights[0][i] = weights[i][0] = weights[board_size-1][i] = weights[i][board_size-1] = 5
+        
+    self.position_weights = weights
+    return weights
