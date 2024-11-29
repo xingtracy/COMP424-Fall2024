@@ -63,7 +63,7 @@ class StudentAgent(Agent):
     
     # Max depth based on board size and game phase
     if board_size == 6:
-      self.max_depth = 5
+      self.max_depth = 4
     elif board_size == 8:
       self.max_depth = 4
     elif board_size == 10:
@@ -74,41 +74,196 @@ class StudentAgent(Agent):
     # Increase depth in endgame
     if empty_squares < total_squares / 4:
       self.max_depth += 1
-        
-    try:
-      _, best_move = self.alpha_beta(
-        chess_board,
-        self.max_depth,
-        float('-inf'),
-        float('inf'),
-        True,
-        player,
-        opponent,
-        start_time
-      )
-        
-    except TimeoutError:
-      # If we timeout, return the best move found so far
-      valid_moves = get_valid_moves(chess_board, player)
-      if valid_moves:
-        best_move = valid_moves[0]
-        # Quick evaluation of immediate moves
-        best_score = float('-inf')
-        for move in valid_moves:
-          board_copy = deepcopy(chess_board)
-          execute_move(board_copy, move, player)
-          score = self.evaluate_board(board_copy, player, opponent)
-          if score > best_score:
-            best_score = score
-            best_move = move
+
+    #queue = []
+    #queue.append(chess_board)
+
+    #depth = self.max_depth
+
+    '''final_move = random_move(chess_board, player)
+    board_copy = deepcopy(chess_board)
+    execute_move(board_copy, final_move, player)
+    best_value = self.evaluate_board(board_copy, player, opponent)
+
+    while time.time() - start_time <= 1.98 and len(queue)>0:
+      lst = []
+      node = []
+      queue_one = False
+      if len(queue)== 1:
+        queue_one = True
+        lst = queue.pop(0)
+        node = lst
       else:
-        best_move = None
+        lst = queue.pop(0)
+        node = lst[-1]
+
+'''
+
+    '''node = Node(chess_board)
+    node.turn = True
+    queue = []
+    queue.append([node])'''
+
+    '''best_max_move = random_move(chess_board, player)
+    changed = False
+    alpha = float("-inf")
+    beta = float("inf")
+    prev_depth = 0
+    prev_child = -1'''
+    
+    while time.time() - start_time <= (1.95/2):
+      try:
+        value, best_move = self.alpha_beta(
+          chess_board,
+          self.max_depth,
+          float('-inf'),
+          float('inf'),
+          True,
+          player,
+          opponent,
+          start_time
+        )
+        
+        self.max_depth+= 1
+          
+      except TimeoutError:
+        # If we timeout, return the best move found so far
+        valid_moves = get_valid_moves(chess_board, player)
+        if valid_moves:
+          best_move = valid_moves[0]
+          # Quick evaluation of immediate moves
+          best_score = float('-inf')
+          for move in valid_moves:
+            board_copy = deepcopy(chess_board)
+            execute_move(board_copy, move, player)
+            score = self.evaluate_board(board_copy, player, opponent)
+            if score > best_score:
+              best_score = score
+              best_move = move
+        else:
+          best_move = None
             
     time_taken = time.time() - start_time
     if time_taken > 2:
       print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
     
     return best_move
+    
+    
+    '''while time.time() - start_time <= 1.98 and len(queue) > 0:
+        lst_of_children = queue.pop(0)
+        for i in range(len(lst_of_children)):
+            
+            if time.time() - start_time >= 1.98 :
+              break
+            child = lst_of_children[i]
+            prev_child = child
+            if prev_depth != child.depth:
+                alpha = float("-inf")
+                beta = float("inf")
+                prev_depth = child.depth
+                
+            else:
+                #if going through this part on first iteration then that means we're looking at
+                #sme level but diff branch and not neighbors, need to flip alpha beta
+                if i == 0 and child.parent != None:
+                   parent = child.parent
+                   while parent != None:
+                      alpha = parent.alpha
+                      beta = parent.beta
+                      if parent.parent != None:
+                        parent.alpha = float("-inf")
+                        parent.beta = float("inf")
+                      parent = parent.parent
+                   child.parent.alpha = alpha
+                   child.parent.beta = beta
+                      
+      
+                   
+                elif child.parent != None:
+                  alpha = child.parent.alpha
+                  beta = child.parent.beta
+
+            current_player = player if child.turn else opponent
+            opponent_player = opponent if child.turn else player
+            
+            try:
+                value, move = self.alpha_beta(
+                    child,
+                    1,
+                    alpha,
+                    beta,
+                    child.turn,
+                    current_player,
+                    opponent_player,
+                    start_time        
+                )
+                
+                children = child.children
+                queue.append(children)
+
+                if child.turn:  # Maximizing player
+                    if child.parent != None:
+                      if child.parent.beta > value:
+                        child.parent.beta = value
+                        if move != None:
+                            best_max_move = move
+                    else:
+                       if move != None:
+                            best_max_move = move
+
+                    
+                        
+                else:  # Minimizing player
+                    if child.parent != None:
+                      if child.parent.alpha < value:
+                        child.parent.alpha = value
+                        if move != None:
+                            best_max_move = move
+                    
+
+            except TimeoutError:
+                # If we timeout, return the best move found so far
+                valid_moves = get_valid_moves(chess_board, player)
+                if valid_moves:
+                    best_move = valid_moves[0]
+                    # Quick evaluation of immediate moves
+                    best_score = float('-inf')
+                    for move in valid_moves:
+                        board_copy = deepcopy(chess_board)
+                        execute_move(board_copy, move, player)
+                        score = self.evaluate_board(board_copy, player, opponent)
+                        if score > best_score:
+                            best_score = score
+                            best_move = move
+                    else:
+                        best_move = None
+        if prev_child.parent == None or prev_child.parent.parent == None:
+           continue
+        parent = prev_child.parent.parent
+        turn = not prev_child.parent.turn
+        prev = prev_child.parent
+        
+        while parent != None:
+            if turn:#max, set alpha from beta returned
+              if prev.beta > parent.alpha:
+                  parent.alpha = prev.beta
+            else: #min, set beta from alpha returned
+              if prev.alpha < parent.beta:
+                  parent.beta = prev.alpha
+            prev = parent
+            parent = parent.parent
+            turn = not turn'''
+
+      
+            
+    time_taken = time.time() - start_time
+    if time_taken > 2:
+      print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
+    #print("my ai took ", time_taken)
+    if best_max_move == None:
+       x = 0
+    return best_max_move
 
   def find_good_edges( matrix, num):
     
@@ -192,7 +347,7 @@ class StudentAgent(Agent):
     # Remove duplicates and return as a list
     return list(set(result)) 
 
-  def evaluate_board(self, chess_board, player, opponent, c,m,s,e):
+  def evaluate_board(self, chess_board, player, opponent):
     """Evaluate board state"""
 
     player_edges = StudentAgent.find_good_edges(chess_board,player)
@@ -229,16 +384,18 @@ class StudentAgent(Agent):
     return score
 
   def alpha_beta(self, chess_board, depth, alpha, beta, maximizing_player, player, opponent, start_time):
+    #chess_board = node.data
     """Minimax implementation with alpha-beta pruning and time checking"""
-    
     # Time safety margin
-    if time.time() - start_time > 1.98:  
-      return self.evaluate_board(chess_board, player, opponent), None
+    '''if time.time() - start_time > 1.95:  
+      print("max reached")
+      return self.evaluate_board(chess_board, player, opponent), None'''
       # raise TimeoutError
+
     
-    # Base Case: At the root
-    if depth == 0:
-      return self.evaluate_board(chess_board, player, opponent), None
+    # Base Case: At leaf node
+    if depth == 0:           
+        return self.evaluate_board(chess_board, player, opponent), None
         
     is_endgame, p1_score, p2_score = check_endgame(chess_board, player, opponent)
     
@@ -260,10 +417,32 @@ class StudentAgent(Agent):
     best_move = valid_moves[0]
     best_value = float('-inf') if maximizing_player else float('inf')
     
+    #children = []
+    only_set_children= False
+
     for move in valid_moves:
+      if time.time() - start_time > 1.95:  
+        break
+      
+
       board_copy = deepcopy(chess_board)
       execute_move(board_copy, move, current_player)
       
+
+      '''node2 = Node(board_copy)
+      node2.parent = node
+      node2.turn = not node.turn
+      node2.depth = node.depth +1
+      #children.append(node2)
+      node.children.append(node2)'''
+
+      '''if len(node.move) == 0:
+        node2.move = move
+      else:
+        node2.move = node.move'''
+      
+      if only_set_children == True:
+        continue
       value, _ = self.alpha_beta(board_copy, depth-1, alpha, beta, not maximizing_player, player, opponent, start_time)
       
       if maximizing_player:
@@ -278,11 +457,13 @@ class StudentAgent(Agent):
         beta = min(beta, best_value)
           
       if beta <= alpha:
+        #node.children.remove(board_copy)
         break
+        #only_set_children = True
             
     return best_value, best_move
   
-  
+'''  
 def testing():
     # Print current working directory for debugging
     print("Current working directory:", os.getcwd())
@@ -325,7 +506,7 @@ def testing():
                         sys.executable,  # Use the current Python interpreter
                         simulator_path,
                         "--player_1", "student_agent",
-                        "--player_2", "richard",
+                        "--player_2", "random_agent",
                         "--autoplay",
                         "--autoplay_runs", str(autoplay_num),
                         "--board_size", str(board_size)
@@ -348,4 +529,62 @@ def testing():
 
 if __name__ == "__main__":
   sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-  testing()
+  testing()'''
+
+class Node:
+    def __init__(self, data):
+        self.data = data
+        self.children = []  # Reference to the next node
+        self.parent = None
+        self.move = []
+        self.turn = False
+        self.depth = 0
+        self.alpha = float("-inf")
+        self.beta = float("inf")
+
+class LinkedList:
+    def __init__(self):
+        self.head = None  # Initialize the head of the list
+
+    def append(self, data):
+        """Append a new node to the end of the list"""
+        new_node = Node(data)
+        if self.head is None:
+            self.head = new_node
+            return
+        last = self.head
+        while last.next:
+            last = last.next
+        last.next = new_node
+
+    def prepend(self, data):
+        """Prepend a new node to the beginning of the list"""
+        new_node = Node(data)
+        new_node.next = self.head
+        self.head = new_node
+
+    def delete(self, key):
+        """Delete the first node with the given data"""
+        temp = self.head
+        if temp is not None:
+            if temp.data == key:
+                self.head = temp.next
+                temp = None
+                return
+        while temp is not None:
+            if temp.data == key:
+                break
+            prev = temp
+            temp = temp.next
+        if temp is None:
+            return
+        prev.next = temp.next
+        temp = None
+
+    def print_list(self):
+        """Print the entire list"""
+        temp = self.head
+        while temp:
+            print(temp.data, end=" -> ")
+            temp = temp.next
+        print("None")
