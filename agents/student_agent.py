@@ -18,7 +18,7 @@ class StudentAgent(Agent):
     self.position_weights = None
     self.max_depth = 3
     
-    # Weights for different game phases
+    # Weight of heuristics for different game phases
     self.weights = {
       'opening': {
         'corner_grab': 100,
@@ -50,8 +50,13 @@ class StudentAgent(Agent):
     """
     Implement the step function of your agent here.
     """
+    #need start time so alpha-beta can calculate how much time has passed
     start_time = time.time()
+
+    #use board size to determine depth and breadth
     board_size = chess_board.shape[0]
+
+    #user empty and total squares to calculate if we're near the end of the game
     empty_squares = np.sum(chess_board == 0)
     total_squares = board_size * board_size
     
@@ -81,6 +86,7 @@ class StudentAgent(Agent):
         start_time
       )
         
+    #this is for when going over 2 seconds
     except TimeoutError:
       # If we timeout, return the best move found so far
       valid_moves = get_valid_moves(chess_board, player)
@@ -98,9 +104,7 @@ class StudentAgent(Agent):
       else:
         best_move = None
             
-    time_taken = time.time() - start_time
-    if time_taken > 2:
-      print("My AI's TOOK OVER 2 SECONDS ", time_taken, "seconds.")
+    
     
     return best_move
   
@@ -155,6 +159,8 @@ class StudentAgent(Agent):
     opponent_discs = np.sum(chess_board == opponent)
     disc_diff = player_discs - opponent_discs
 
+    #calculate the final board state score based on the values gotten times
+    #their heurisitc weight
     score = (
         weights['corner_grab'] * corner_grab +
         weights['stability'] * stability +
@@ -170,18 +176,23 @@ class StudentAgent(Agent):
     """Minimax implementation with alpha-beta pruning and time checking"""
     
     # Time safety margin
+    #set to 1.92 for safety of not going over 2s
     if time.time() - start_time > 1.92:  
         return self.evaluate_board(chess_board, player, opponent), None
     
-    # Base Case: At the root
+    
+    #Reached leaf node, calculate the board value and return it
     if depth == 0:
       return self.evaluate_board(chess_board, player, opponent), None
         
+    #check if its the end of the game and theres no moves left
     is_endgame, _, _ = check_endgame(chess_board, player, opponent)
     
+    #if its endgame return the board state value
     if is_endgame:
       return self.evaluate_board(chess_board, player, opponent), None
     
+    #get the current player numerical value and the valid moves
     current_player = player if maximizing_player else opponent
     valid_moves = get_valid_moves(chess_board, current_player)
     
@@ -189,6 +200,8 @@ class StudentAgent(Agent):
     if not valid_moves:
       return self.alpha_beta(chess_board, depth-1, alpha, beta, not maximizing_player, player, opponent, start_time)[0], None
     
+    #Depending on the board size we set the breadth
+    #If the number of moves is over the max breadth we reduce it to the breadth value
     if chess_board.shape[0]==6:
       if len(valid_moves)>10:
         valid_moves = StudentAgent.prioritize_stable_moves(valid_moves, chess_board, current_player)
@@ -209,20 +222,27 @@ class StudentAgent(Agent):
         valid_moves = StudentAgent.prioritize_stable_moves(valid_moves, chess_board, current_player)
         valid_moves=valid_moves[:14]
     
-    # Initialize Searching
+    # Initialize Searching, base case 
     best_move = valid_moves[0]
     best_value = float('-inf') if maximizing_player else float('inf')
     
+
+    #Go through all moves
     for move in valid_moves:
       
+      #if hit 1.92 seconds or over we stop to return to the top
       if time.time()-start_time>=1.92:
         break
       
+      #make a temporary deepcopy of the board and execute the move
+      #call alpha beta on it to get the value of the best leaf node
       board_copy = deepcopy(chess_board)
       execute_move(board_copy, move, current_player)
       
+      #when recursive calling alpha beta need to decrement depth and switch the maximizing_player value
       value, _ = self.alpha_beta(board_copy, depth-1, alpha, beta, not maximizing_player, player, opponent, start_time)
       
+      #alpha beta algorithm from notes, update alpha or beta value depending on if at max or min turn
       if maximizing_player:
         if value > best_value:
           best_value = value
@@ -234,6 +254,7 @@ class StudentAgent(Agent):
           best_move = move
         beta = min(beta, best_value)   
       if beta <= alpha:
+        #pruning
         break
             
     return best_value, best_move
