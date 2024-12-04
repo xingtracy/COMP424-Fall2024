@@ -129,12 +129,12 @@ class StudentAgent(Agent):
     valid_moves = get_valid_moves(chess_board, player)
     corner_grab = sum(1 for move in valid_moves if move in corners)
     
-    # Stability
+    # Stability (num of player stable pieces - num of opponent stable pieces)
     player_stable, player_stable_board = StudentAgent.count_stable_pieces(chess_board, player)
     opponent_stable, opponent_stable_board = StudentAgent.count_stable_pieces(chess_board, opponent)
     stability = player_stable - opponent_stable
     
-    # Mobility
+    # Mobility (num of player valid moves - num of opponent valid moves)
     player_moves = len(valid_moves)
     opponent_moves = len(get_valid_moves(chess_board, opponent))
     mobility = player_moves - opponent_moves
@@ -176,7 +176,7 @@ class StudentAgent(Agent):
     """Minimax implementation with alpha-beta pruning and time checking"""
     
     # Time safety margin
-    #set to 1.92 for safety of not going over 2s
+    # set to 1.92 for safety of not going over 2s
     if time.time() - start_time > 1.92:  
         return self.evaluate_board(chess_board, player, opponent), None
     
@@ -200,8 +200,8 @@ class StudentAgent(Agent):
     if not valid_moves:
       return self.alpha_beta(chess_board, depth-1, alpha, beta, not maximizing_player, player, opponent, start_time)[0], None
     
-    #Depending on the board size we set the breadth
-    #If the number of moves is over the max breadth we reduce it to the breadth value
+    # Depending on the board size we set the breadth
+    # If the number of moves is over the max breadth we reduce it to the breadth value
     if chess_board.shape[0]==6:
       if len(valid_moves)>10:
         valid_moves = StudentAgent.prioritize_stable_moves(valid_moves, chess_board, current_player)
@@ -225,7 +225,6 @@ class StudentAgent(Agent):
     # Initialize Searching, base case 
     best_move = valid_moves[0]
     best_value = float('-inf') if maximizing_player else float('inf')
-    
 
     #Go through all moves
     for move in valid_moves:
@@ -277,34 +276,34 @@ class StudentAgent(Agent):
     unstable_moves = []
     
     for move in valid_moves:
-        is_stable = False
-        row, col = move
-        
-        # Check if move is in corner
-        if (row in [0, board_size-1] and col in [0, board_size-1]):
+      is_stable = False
+      row, col = move
+      
+      # Check if move is in corner
+      if (row in [0, board_size-1] and col in [0, board_size-1]):
+        is_stable = True
+      
+      # Check if move creates an unflippable edge piece
+      elif row in [0, board_size-1] or col in [0, board_size-1]:
+        # Check if it connects to a corner or other stable edge pieces
+        if row == 0:  # Top edge
+          if all(chess_board[0, :col] == player) or all(chess_board[0, col+1:] == player):
             is_stable = True
-        
-        # Check if move creates an unflippable edge piece
-        elif row in [0, board_size-1] or col in [0, board_size-1]:
-            # Check if it connects to a corner or other stable edge pieces
-            if row == 0:  # Top edge
-                if all(chess_board[0, :col] == player) or all(chess_board[0, col+1:] == player):
-                    is_stable = True
-            elif row == board_size-1:  # Bottom edge
-                if all(chess_board[board_size-1, :col] == player) or all(chess_board[board_size-1, col+1:] == player):
-                    is_stable = True
-            elif col == 0:  # Left edge
-                if all(chess_board[:row, 0] == player) or all(chess_board[row+1:, 0] == player):
-                    is_stable = True
-            elif col == board_size-1:  # Right edge
-                if all(chess_board[:row, board_size-1] == player) or all(chess_board[row+1:, board_size-1] == player):
-                    is_stable = True
-        
-        # Add move to appropriate list
-        if is_stable:
-            stable_moves.append(move)
-        else:
-            unstable_moves.append(move)
+        elif row == board_size-1:  # Bottom edge
+          if all(chess_board[board_size-1, :col] == player) or all(chess_board[board_size-1, col+1:] == player):
+            is_stable = True
+        elif col == 0:  # Left edge
+          if all(chess_board[:row, 0] == player) or all(chess_board[row+1:, 0] == player):
+            is_stable = True
+        elif col == board_size-1:  # Right edge
+          if all(chess_board[:row, board_size-1] == player) or all(chess_board[row+1:, board_size-1] == player):
+            is_stable = True
+      
+      # Add move to appropriate list
+      if is_stable:
+        stable_moves.append(move)
+      else:
+        unstable_moves.append(move)
     
     # Return concatenated lists with stable moves first
     return stable_moves + unstable_moves
@@ -395,11 +394,11 @@ class StudentAgent(Agent):
     for i in range(board_size):
       for j in range(board_size):
         if board[i][j] == player:
+          #check for all directions
           for dx, dy in directions:
             new_x, new_y = i + dx, j + dy
-            if (0 <= new_x < board_size and 
-              0 <= new_y < board_size and 
-              board[new_x][new_y] == 0):
+            #if it is within the boarders
+            if (0 <= new_x < board_size and 0 <= new_y < board_size and board[new_x][new_y] == 0):
               frontier += 1
               break
             
